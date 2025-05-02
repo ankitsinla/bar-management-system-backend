@@ -45,8 +45,8 @@ export class ProductsController {
 
   //Products
   @Post()
-  create(@Body() createProductDto: CreateProductDto) {
-    return this.productsService.createProduct(createProductDto);
+  create(@Body() createProductDto: CreateProductDto, @Request() request: any) {
+    return this.productsService.createProduct(createProductDto, request);
   }
 
   @Get()
@@ -56,16 +56,15 @@ export class ProductsController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.productsService.findOne(+id);
+    return this.productsService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
-    return this.productsService.update(+id, updateProductDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.productsService.remove(+id);
+  async updateProduct(
+    @Param('id') id: string,
+    @Body() updateProductDto: UpdateProductDto,
+    @Request() request: any
+  ) {
+    return this.productsService.updateProduct(id, updateProductDto, request);
   }
 }

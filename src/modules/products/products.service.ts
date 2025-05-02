@@ -43,7 +43,10 @@ export class ProductsService {
   }
 
   //Products
-  async createProduct(createProductDto: CreateProductDto) {
+  async createProduct(createProductDto: CreateProductDto, request) {
+    this.commonUtilityService.validateUserRole(request.user?.role, [
+      UserRoleEnum.ADMIN,
+    ]);
     const { name, category, currentPrice } = createProductDto;
     const productCategory =
       await this.productDaoService.getProductCategory(category);
@@ -70,23 +73,63 @@ export class ProductsService {
     return products;
   }
 
-  async findOne(id: number) {
-    return await this.productDaoService.getProductInfoById(id);
+  async findOne(id: string) {
+    const product = await this.productDaoService.getProductWithHistory(id);
+    if (!product)
+      throw new HttpException('Data not found.', HttpStatus.NOT_FOUND);
+    return product;
   }
 
-  async update(id: number, updateProductDto: UpdateProductDto) {
-    const product = await this.productDaoService.getProductInfoById(id);
-    if (!product) {
-      return 'product not found';
+  async updateProduct(id: string, updateProductDto: UpdateProductDto, request) {
+    const user = request.user;
+    this.commonUtilityService.validateUserRole(user?.role, [
+      UserRoleEnum.ADMIN,
+    ]);
+    const existingProduct = await this.productDaoService.getProductInfoById(id);
+    if (!existingProduct) {
+      throw new HttpException('Product not found.', HttpStatus.BAD_REQUEST);
     }
-
-    const { name } = updateProductDto;
-    product.name = name;
-    await this.productDaoService.addProduct(product);
-    return `success`;
+    const updatedProduct = await this.productDaoService.updateProduct(
+      id,
+      updateProductDto,
+    );
+    const productHistoryData = this.updatedFields(
+      id,
+      user?.sub,
+      updateProductDto,
+      existingProduct,
+    );
+    const productHistoryDataRes =
+      await this.productDaoService.addProductHistoryData(productHistoryData);
+    return updatedProduct;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} product`;
+  updatedFields(
+    productId: string,
+    updatedBy: string,
+    updateProductDto: UpdateProductDto,
+    existing,
+  ) {
+    return Object.keys(updateProductDto).reduce(
+      (history, key) => {
+        if (existing[key] != updateProductDto[key]) {
+          history.push({
+            updateKey: key,
+            previousValue: existing[key]?.toString(),
+            newValue: updateProductDto[key]?.toString(),
+            updatedBy,
+            productId,
+          });
+        }
+        return history;
+      },
+      [] as {
+        updateKey: string;
+        previousValue: string;
+        newValue: string;
+        updatedBy: string;
+        productId: string;
+      }[],
+    );
   }
 }

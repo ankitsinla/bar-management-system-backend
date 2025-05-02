@@ -33,7 +33,7 @@ export class UsersService {
       );
       return { accessToken };
     }
-    throw new UnauthorizedException('Missing or invalid authorization header');
+    throw new UnauthorizedException('Invalid username - password.');
   }
 
   async create(
